@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Structural Affinity</title>
+  <meta name="description" content="Structural Affinity couples cage-handle motion through a second, enclosing cage: smoother cage-based deformations, fewer hand-tuned regularizers, O(N+L) overhead.">
+  <meta name="author" content="Aviraj Newatia, Shengan Yang, Hantao Zhong, Rika Antonova">
+  <meta property="og:title" content="Structural Affinity: An Algorithm for Coherent Cage-Based Shape Design">
+  <meta property="og:description" content="Make cage handles move together. One precomputed sparse matrix, no extra losses: regular cages, smoother wings, fingertips you can actually cast.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="static/images/overview.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="static/images/favicon.svg" type="image/svg+xml">
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+  <link rel="stylesheet" href="static/css/bulma.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+  <link rel="stylesheet" href="static/css/index.css">
+
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+  <script defer src="static/js/playground.js"></script>
+  <script defer src="static/js/index.js"></script>
+</head>
+<body>
+
+<nav class="navbar sa-nav" role="navigation" aria-label="main navigation">
+  <div class="container is-max-desktop">
+    <div class="navbar-brand">
+      <a class="navbar-item sa-brand" href="#top">
+        <img src="static/images/favicon.svg" alt="" width="22" height="22">&nbsp;Structural Affinity
+      </a>
+      <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="saNav">
+        <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
+      </a>
+    </div>
+    <div class="navbar-menu" id="saNav">
+      <div class="navbar-end">
+        <a class="navbar-item" href="#playground">Playground</a>
+        <a class="navbar-item" href="#method">Method</a>
+        <a class="navbar-item" href="#results">Results</a>
+        <a class="navbar-item" href="#BibTeX">BibTeX</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<section class="hero" id="top">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+          <h1 class="title is-1 publication-title">
+            <span class="sa-grad">Structural Affinity</span>: An Algorithm for<br>Coherent Cage-Based Shape Design
+          </h1>
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">Aviraj Newatia,</span>
+            <span class="author-block">Shengan Yang,</span>
+            <span class="author-block">Hantao Zhong,</span>
+            <span class="author-block">Rika Antonova</span>
+          </div>
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">University of Cambridge</span>
+          </div>
+
+          <div class="column has-text-centered">
+            <div class="publication-links">
+              <span class="link-block">
+                <a href="static/pdf/structural-affinity.pdf" target="_blank" rel="noopener"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fas fa-file-pdf"></i></span>
+                  <span>Paper</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a class="external-link button is-normal is-rounded is-dark is-static-soon" aria-disabled="true" title="Coming soon">
+                  <span class="icon"><i class="ai ai-arxiv"></i></span>
+                  <span>arXiv (soon)</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a class="external-link button is-normal is-rounded is-dark is-static-soon" aria-disabled="true" title="Coming soon">
+                  <span class="icon"><i class="fab fa-github"></i></span>
+                  <span>Code (soon)</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="#playground" class="button is-normal is-rounded sa-cta">
+                  <span class="icon"><i class="fas fa-hand-pointer"></i></span>
+                  <span>Try it</span>
+                </a>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="hero teaser">
+  <div class="container is-max-desktop">
+    <div class="hero-body">
+      <figure class="sa-figure">
+        <img src="static/images/overview.jpg" alt="Top: dragging one handle of a plain cage pulls a single spike out of the mesh. Bottom: with Structural Affinity, neighbouring handles stretch along and the mesh bends smoothly.">
+      </figure>
+      <h2 class="subtitle has-text-centered sa-tagline">
+        Cage handles normally move <b class="c-cbd">alone</b>. Structural Affinity makes them move
+        <b class="c-sa">together</b>, using a second cage and one precomputed sparse matrix.
+      </h2>
+    </div>
+  </div>
+</section>
+
+<section class="section sa-stats-section">
+  <div class="container is-max-desktop">
+    <div class="sa-stats">
+      <div class="sa-stat" data-reveal>
+        <div class="sa-stat-num"><span data-count="2.45" data-decimals="2">0</span>&times;</div>
+        <div class="sa-stat-label">t-nut co-design success<br><span class="muted">35.6% &rarr; 87.4%</span></div>
+      </div>
+      <div class="sa-stat" data-reveal>
+        <div class="sa-stat-num"><span data-count="82" data-decimals="0">0</span>%</div>
+        <div class="sa-stat-label">less cage Laplacian distortion<br><span class="muted">Neural Cages, chair, no extra losses</span></div>
+      </div>
+      <div class="sa-stat" data-reveal>
+        <div class="sa-stat-num"><span data-count="17" data-decimals="0">0</span>/17</div>
+        <div class="sa-stat-label">perturbed wings with lower drag<br><span class="muted">paired runs vs. plain CBD</span></div>
+      </div>
+      <div class="sa-stat" data-reveal>
+        <div class="sa-stat-num sa-mono">O(N+L)</div>
+        <div class="sa-stat-label">at deformation time<br><span class="muted">one sparse mat-mul</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">TL;DR</h2>
+        <div class="content has-text-justified sa-tldr">
+          <ul>
+            <li><b>The problem.</b> Cage-based deformation (CBD) lets an optimizer reshape a mesh by moving a few cage handles. But each handle moves on its own, so optimizers find spiky, tangled, degenerate shapes, and people fight back with hand-tuned regularization losses.</li>
+            <li><b>The idea.</b> Wrap the control cage in a coarser <em>outer</em> cage. Two handles that hang off the outer cage the same way are structurally related, so when one moves, the other should follow.</li>
+            <li><b>The algorithm.</b> Precompute an affinity matrix \(C_{ij}=\sum_k \min(w_{ik}, w_{jk})\) from mean-value coordinates. At run time, displacements pass through \(A=(1-\alpha)I+\alpha C^\top\). No online solve, no new losses, and every cage motion is still reachable.</li>
+            <li><b>Results.</b> Across neural deformation transfer, aerodynamic wing optimization and robot fingertip co-design: far more regular cages, smoother surfaces, lower modeled drag, and fingertips that were cast in silicone and tested on a real robot.</li>
+          </ul>
+        </div>
+        <details class="sa-abstract">
+          <summary>Full abstract</summary>
+          <div class="content has-text-justified">
+            <p>
+              Cage-based deformation (CBD) parametrises 3D geometry through a small set of control handles, effectively enabling a variety of tasks from animation and interactive modelling to tool-based co-design, neural deformation transfer, and aerodynamic shape optimization.
+              Many optimization approaches relying on CBD employ regularisation strategies to reduce the distortion of the deformed mesh by encouraging smooth, regular cage deformations.
+              These techniques offer soft guidance to an optimization algorithm towards desirable deformations, but compete with the task objective rather than changing the deformation parameterization itself.
+              In this work we introduce <em>Structural Affinity</em> for CBD, an explicit regularisation method which enables smooth deformations through control cages by exploiting a two-cage structure to couple cage-handle motion directly.
+              <em>Structural Affinity</em> precomputes an affinity matrix using mean-value coordinates, binding the inner control-cage to a coarser outer-cage. This matrix defines how much a cage handle displacement propagates to neighbouring handles which substantially decreases and often eliminates cage self-intersections, reduces mesh distortion, and adds linear overhead at deformation time.
+            </p>
+            <p>
+              Across robotic control&ndash;morphology co-design, source-to-target neural deformation transfer, and aerodynamic wing shape optimization, <em>Structural Affinity</em> produces more regular deformations and substantially reduces reliance on hand-designed structural loss terms. We report consistent gains on three complementary diagnostics: the cotangent Laplacian, a proxy for surface smoothness; cage distortion, capturing whether control handles move coherently; and surface roughness, which measures undesirable oscillation in wing geometry.
+            </p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PLAYGROUND ================= -->
+<section class="section sa-band" id="playground">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">Playground: feel the difference</h2>
+    <p class="has-text-centered sa-lead">
+      Same shape, same cage, same input. <b>Drag any handle</b> in either panel. Left is plain CBD; right passes the
+      same displacements through Structural Affinity. Everything here runs live: 2D mean-value coordinates, the affinity
+      matrix and its propagation, computed in your browser.
+    </p>
+
+    <div class="pg-panels">
+      <div class="pg-panel">
+        <div class="pg-head"><span class="pg-dot cbd"></span>CBD <span class="muted">handles move alone</span></div>
+        <canvas id="pg-cbd" class="pg-canvas" aria-label="Plain cage-based deformation, interactive"></canvas>
+        <div class="pg-metrics">
+          <div><span class="pg-m-label">cage self-intersections</span><span class="pg-m-val" id="m-cbd-x">0</span></div>
+          <div><span class="pg-m-label">surface distortion</span><span class="pg-m-val" id="m-cbd-d">0</span></div>
+        </div>
+      </div>
+      <div class="pg-panel">
+        <div class="pg-head"><span class="pg-dot sa"></span>CBD-SA <span class="muted">neighbours follow</span><span class="pg-ratio" id="pg-ratio" hidden></span></div>
+        <canvas id="pg-sa" class="pg-canvas" aria-label="Cage-based deformation with Structural Affinity, interactive"></canvas>
+        <div class="pg-metrics">
+          <div><span class="pg-m-label">cage self-intersections</span><span class="pg-m-val" id="m-sa-x">0</span></div>
+          <div><span class="pg-m-label">surface distortion</span><span class="pg-m-val" id="m-sa-d">0</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pg-controls">
+      <div class="pg-sliders">
+        <label class="pg-slider">
+          <span>Affinity strength <b>&alpha;</b> = <output id="o-alpha">0.50</output></span>
+          <input type="range" id="s-alpha" min="0" max="0.95" step="0.01" value="0.5">
+        </label>
+        <label class="pg-slider">
+          <span>Affinity density <b>d</b> = <output id="o-dens">0.40</output></span>
+          <input type="range" id="s-dens" min="0" max="1" step="0.01" value="0.4">
+        </label>
+      </div>
+      <div class="pg-buttons">
+        <button class="button is-rounded is-small sa-btn" id="b-kick"><span class="icon"><i class="fas fa-dice"></i></span><span>Optimizer kick</span></button>
+        <button class="button is-rounded is-small sa-btn" id="b-pull"><span class="icon"><i class="fas fa-left-right"></i></span><span>Pull one handle</span></button>
+        <button class="button is-rounded is-small sa-btn" id="b-anim"><span class="icon"><i class="fas fa-play"></i></span><span>Random walk</span></button>
+        <button class="button is-rounded is-small sa-btn-ghost" id="b-reset"><span class="icon"><i class="fas fa-undo"></i></span><span>Reset</span></button>
+        <label class="pg-toggle"><input type="checkbox" id="c-outer" checked> outer cage</label>
+      </div>
+    </div>
+
+    <div class="columns pg-explain">
+      <div class="column is-7">
+        <div class="content">
+          <p><b>What you're seeing.</b> The shape is bound to the inner cage (dots). The dashed polygon on the right is the
+            <em>outer cage</em>; it is only used offline to build the affinity matrix. <b>Hover a handle</b> to see its row of the
+            affinity matrix: brighter handles follow it more.</p>
+          <p><b>Try:</b> &ldquo;Optimizer kick&rdquo; shoves a few random handles hard, like one step of a gradient-free optimizer.
+            CBD pulls dents and spikes out of the surface wherever a single handle moved; CBD-SA turns the same kick into broad, coherent bulges. Push
+            &alpha; to 0 and both panels become identical; drop d to 0 and the coupling disappears.</p>
+          <p class="muted is-size-7">Surface distortion = mean squared change in the discrete Laplacian of the outline (lower is smoother).
+            Self-intersections = crossing pairs of non-adjacent cage edges. Because the update is not normalized, uniform translations are amplified; in the paper global pose is handled separately.</p>
+        </div>
+      </div>
+      <div class="column is-5 has-text-centered">
+        <canvas id="pg-mat" class="pg-mat" aria-label="Affinity matrix heatmap"></canvas>
+        <p class="is-size-7 muted">Sparsified affinity matrix \(C\) (handles &times; handles). Hovered row outlined.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= METHOD ================= -->
+<section class="section" id="method">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">How it works</h2>
+    <div class="sa-steps">
+      <div class="sa-step" data-reveal>
+        <div class="sa-step-n">1</div>
+        <h3 class="title is-5">Bind the cage to an outer cage</h3>
+        <p>Enclose the control cage \(\mathcal{C}\) in a coarser convex cage \(\mathcal{U}\) with \(M\) handles. Each inner handle gets
+          mean-value coordinates \(V_i=\sum_k w_{ik}U_k\), with all \(w_{ik}>0\).</p>
+      </div>
+      <div class="sa-step" data-reveal>
+        <div class="sa-step-n">2</div>
+        <h3 class="title is-5">Read off who follows whom</h3>
+        <p>Moving \(U_k\) moves \(V_j\) by \(w_{jk}/w_{ik}\) times as much as \(V_i\). Average over \(k\), but <b>cap each ratio at one</b> so followers never overshoot:</p>
+        <p class="sa-eq">\[C_{ij}=\sum_{k} w_{ik}\min\!\Big(1,\tfrac{w_{jk}}{w_{ik}}\Big)=\sum_{k}\min(w_{ik},w_{jk})\]</p>
+        <p class="is-size-7 muted">Symmetric, in \([0,1]\), one on the diagonal. Without the cap the average is always exactly 1. Sparsify to density \(d\).</p>
+      </div>
+      <div class="sa-step" data-reveal>
+        <div class="sa-step-n">3</div>
+        <h3 class="title is-5">Propagate in one product</h3>
+        <p>Given handle displacements \(D\in\mathbb{R}^{N\times 3}\):</p>
+        <p class="sa-eq">\[\Delta V = A D,\;\; A=(1-\alpha)I+\alpha C^{\top}\]</p>
+        <p class="is-size-7 muted">\(\mathcal{O}(N+L)\) for \(L\) retained affinities. The outer cage is no longer needed.</p>
+      </div>
+    </div>
+
+    <div class="sa-callout" data-reveal>
+      <div class="sa-callout-icon"><i class="fas fa-unlock-alt"></i></div>
+      <div>
+        <b>Coupling, not constraint.</b> For dense \(C\) the matrix is positive semidefinite, so every eigenvalue of \(A\) is at
+        least \(1-\alpha>0\): \(A\) is invertible and <em>every</em> inner-cage motion stays reachable. Structural Affinity changes
+        which shapes are <em>easy</em> to reach, not which are <em>possible</em>. Projecting onto the outer-cage subspace instead
+        removes 90 of 126 degrees of freedom on Neural Cages, and does not reproduce the gains.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= RESULTS ================= -->
+<section class="section sa-band" id="results">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">One parameterization, three domains</h2>
+
+    <div class="tabs is-centered is-toggle is-toggle-rounded sa-tabs" role="tablist">
+      <ul>
+        <li class="is-active" data-tab="robot"><a role="tab"><span class="icon is-small"><i class="fas fa-robot"></i></span><span>Robot co-design</span></a></li>
+        <li data-tab="nc"><a role="tab"><span class="icon is-small"><i class="fas fa-shapes"></i></span><span>Neural Cages</span></a></li>
+        <li data-tab="aero"><a role="tab"><span class="icon is-small"><i class="fas fa-plane"></i></span><span>Wing design</span></a></li>
+      </ul>
+    </div>
+
+    <!-- ---------- ROBOT ---------- -->
+    <div class="sa-tab-pane is-active" id="tab-robot" role="tabpanel">
+      <p class="sa-lead has-text-centered">
+        Co-design LEAP-hand fingertips <em>and</em> an RL grasping policy to pick tiny objects off a table.
+        A gradient-free optimizer reshapes the fingertip cage while FastTD3 learns to use it.
+      </p>
+
+      <div class="sa-bigbars" data-reveal>
+        <div class="sa-bigbars-title">t-nut success, 4 training seeds &times; 1,000 eval episodes</div>
+        <div class="sa-bb-row">
+          <div class="sa-bb-label">Nominal</div>
+          <div class="sa-bb-track">
+            <div class="sa-bb-bar cbd" data-w="35.6"><span>CBD 35.6%</span></div>
+            <div class="sa-bb-bar sa" data-w="87.35"><span>CBD-SA 87.4%</span></div>
+          </div>
+        </div>
+        <div class="sa-bb-row">
+          <div class="sa-bb-label">Randomized<br><span class="muted is-size-7">pose, mass, friction, contact</span></div>
+          <div class="sa-bb-track">
+            <div class="sa-bb-bar cbd" data-w="7.25"><span>CBD 7.3%</span></div>
+            <div class="sa-bb-bar sa" data-w="32.58"><span>CBD-SA 32.6%</span></div>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="title is-4 sa-sub">Spikes that cheat vs. scoops that work</h3>
+      <div class="sa-switch" data-switch="tnut">
+        <div class="sa-switch-btns">
+          <button class="sa-switch-btn cbd is-active" data-side="cbd">CBD</button>
+          <button class="sa-switch-btn sa" data-side="sa">CBD-SA</button>
+        </div>
+        <div class="sa-crop-wrap">
+          <div class="sa-crop" style="background-image:url('static/images/tnut.jpg')" data-side-pos="cbd:0%,sa:100%" role="img"
+               aria-label="Optimized fingertips grasping a t-nut"></div>
+        </div>
+        <p class="sa-switch-cap" data-cap-cbd="Plain CBD grows thin, spiky fingertips that exploit the simulator: they stab the object so it sticks in non-physical ways."
+           data-cap-sa="CBD-SA grows broad scoops: one fingertip pushes the t-nut onto a wide surface provided by the other. No stabbing.">
+          Plain CBD grows thin, spiky fingertips that exploit the simulator: they stab the object so it sticks in non-physical ways.
+        </p>
+      </div>
+
+      <h3 class="title is-4 sa-sub">Spatula lift, frame by frame</h3>
+      <div class="sa-scrub" id="spatula">
+        <div class="columns is-mobile is-variable is-2">
+          <div class="column"><div class="sa-scrub-label c-cbd">CBD</div><img id="sp-b" src="static/images/spatula/b_frame_1_00.jpg" alt="CBD fingertips attempting a spatula lift"></div>
+          <div class="column"><div class="sa-scrub-label c-sa">CBD-SA</div><img id="sp-a" src="static/images/spatula/a_frame_1_00.jpg" alt="CBD-SA fingertips lifting a spatula"></div>
+        </div>
+        <div class="sa-scrub-bar">
+          <button class="button is-small is-rounded sa-btn" id="sp-play" aria-label="Play"><span class="icon"><i class="fas fa-play"></i></span></button>
+          <input type="range" id="sp-range" min="0" max="9" step="1" value="0" aria-label="Frame">
+          <span class="sa-mono" id="sp-t">t = 1.00 s</span>
+        </div>
+        <p class="is-size-7 muted has-text-centered">Jagged CBD fingertips cannot get under the low, unbalanced spatula. CBD-SA's wide, smooth tips slide underneath and reorient it.</p>
+      </div>
+
+      <h3 class="title is-4 sa-sub">Cast in silicone, tested on a real robot</h3>
+      <figure class="sa-figure sa-zoom" data-reveal>
+        <img src="static/images/real_robot.jpg" alt="Real robot experiments: LEAP hand on a PiPER arm picking tweezers, scalpels, cell batteries, screws, scissors and washers, with success rates.">
+      </figure>
+      <p class="has-text-centered">
+        The best CBD-SA designs were moulded in silicone and mounted on a LEAP hand + PiPER arm:
+        <b>100%</b> tweezers, scalpel and cell battery; <b>90%</b> screws &amp; parts.
+        The CBD designs could not be made at all: their thin spikes cannot be cast and would not survive contact.
+      </p>
+    </div>
+
+    <!-- ---------- NEURAL CAGES ---------- -->
+    <div class="sa-tab-pane" id="tab-nc" role="tabpanel">
+      <p class="sa-lead has-text-centered">
+        Neural Cages learns to deform a source ShapeNet shape into a target by predicting cage-handle offsets.
+        We drop in CBD-SA, with or without the two hand-designed shape-regularity losses.
+      </p>
+
+      <div class="columns is-vcentered">
+        <div class="column is-5">
+          <figure class="sa-figure sa-zoom"><img src="static/images/nc_cage.png" alt="Deformed table cage: Vanilla NC tangles, CBD-SA NoReg stays regular."></figure>
+        </div>
+        <div class="column is-7">
+          <div class="sa-quote">
+            <b>Most of the regularity comes from the parameterization itself.</b> With <em>neither</em> regularization loss,
+            CBD-SA keeps <b>93&ndash;98%</b> of the cage-Laplacian gain and <b>85&ndash;98%</b> of the cage-edge gain of the full-loss model,
+            while reconstruction stays within 1% of Vanilla NC. Those losses cost +42% epoch time and +430&nbsp;MiB GPU memory.
+          </div>
+        </div>
+      </div>
+
+      <div class="nc-chart" id="nc-chart">
+        <div class="nc-metric-btns" id="nc-metric-btns"></div>
+        <div class="nc-legend">
+          <span><i class="sw sw-van"></i>Vanilla NC</span>
+          <span><i class="sw sw-noreg"></i>CBD-SA NoReg</span>
+          <span><i class="sw sw-loss"></i>CBD-SA NC Loss</span>
+        </div>
+        <div class="nc-multiples" id="nc-multiples"></div>
+        <p class="is-size-7 muted has-text-centered" id="nc-note">Mean &plusmn; sample SD over six seeds. Lower is better. Labels show change vs. Vanilla NC.</p>
+      </div>
+
+      <figure class="sa-figure sa-zoom" data-reveal>
+        <img src="static/images/nc_mesh.png" alt="Deformed table meshes for Vanilla NC, CBD-SA NoReg and CBD-SA NC Loss.">
+        <figcaption>Deformed table meshes. Vanilla NC buckles the frame; both CBD-SA variants keep the legs and rails straight.</figcaption>
+      </figure>
+      <figure class="sa-figure sa-zoom" data-reveal>
+        <img src="static/images/nc_pareto.png" alt="Reconstruction (DCD) against surface distortion (Cot-Laplacian) for chair, table and car.">
+        <figcaption>Reconstruction (DCD) vs. surface distortion. Reconstruction barely moves; CBD-SA shifts every category toward lower distortion.</figcaption>
+      </figure>
+    </div>
+
+    <!-- ---------- AERO ---------- -->
+    <div class="sa-tab-pane" id="tab-aero" role="tabpanel">
+      <p class="sa-lead has-text-centered">
+        Minimize drag on the NASA CRM wing at fixed lift (\(C_L=0.5\)) under a bending-energy constraint, with OpenAeroStruct (VLM).
+        Same optimizer, same constraints, different shape parameterization.
+      </p>
+
+      <figure class="sa-figure sa-zoom" data-reveal>
+        <img src="static/images/aero_drag_rough.png" alt="Final drag coefficient and deformation roughness for FFD Baseline, FFD Matched, CBD and CBD-SA at small, medium and large design-variable budgets.">
+        <figcaption>At 48 and 192 design variables, CBD-SA reaches the lowest drag <em>and</em> the lowest roughness, with every constraint satisfied.</figcaption>
+      </figure>
+
+      <h3 class="title is-4 sa-sub">Paired runs from perturbed starts</h3>
+      <p class="has-text-centered">Each line is one seed: identical perturbed wing and cage, identical SLSQP run (192 variables, 2,000 iterations). Only the parameterization differs. <b>Hover a line.</b></p>
+      <div class="aero-chart">
+        <div class="tabs is-small is-toggle is-toggle-rounded is-centered aero-pert">
+          <ul>
+            <li class="is-active" data-pert="5"><a>5% perturbation</a></li>
+            <li data-pert="10"><a>10% perturbation</a></li>
+          </ul>
+        </div>
+        <svg id="aero-svg" viewBox="0 0 640 340" role="img" aria-label="Paired drag coefficients, initial vs CBD vs CBD-SA"></svg>
+        <div class="aero-readout" id="aero-readout"></div>
+      </div>
+
+      <figure class="sa-figure sa-zoom" data-reveal>
+        <img src="static/images/aero_shapes.png" alt="Bending-energy utilization and final wing geometry for each parameterization.">
+        <figcaption>Final large-budget wing geometries, coloured by vertical displacement.</figcaption>
+      </figure>
+      <p class="is-size-7 muted has-text-centered">Low-fidelity vortex-lattice model: we compare parameterizations with each other, not with benchmark optima.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="BibTeX">
+  <div class="container is-max-desktop content">
+    <h2 class="title">BibTeX</h2>
+    <div class="sa-bib">
+      <button class="button is-small sa-copy" id="bib-copy"><span class="icon"><i class="far fa-copy"></i></span><span>Copy</span></button>
+      <pre><code id="bib-text">@misc{newatia2026structuralaffinity,
+  title  = {Structural Affinity: An Algorithm for Coherent Cage-Based Shape Design},
+  author = {Newatia, Aviraj and Yang, Shengan and Zhong, Hantao and Antonova, Rika},
+  year   = {2026},
+  url    = {https://camral.github.io/structural-affinity/}
+}</code></pre>
+    </div>
+  </div>
+</section>
+
+<div class="sa-lightbox" id="lightbox" hidden><img alt=""></div>
+
+<footer class="footer">
+  <div class="container">
+    <div class="content has-text-centered">
+      <a class="icon-link" href="static/pdf/structural-affinity.pdf" target="_blank" rel="noopener" aria-label="Paper PDF">
+        <i class="fas fa-file-pdf"></i>
+      </a>
+    </div>
+    <div class="columns is-centered">
+      <div class="column is-8">
+        <div class="content has-text-centered">
+          <p>
+            This website is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative
+            Commons Attribution-ShareAlike 4.0 International License</a>.
+            Built on the <a href="https://github.com/nerfies/nerfies.github.io">Nerfies</a> project page template.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
