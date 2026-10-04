@@ -128,7 +128,7 @@
     function render() {
       svg.innerHTML = '';
       var rows = AERO[pert];
-      var W = 640, H = 340, L = 70, R = 30, T = 20, B = 40;
+      var W = 640, H = 340, L = 70, R = 70, T = 20, B = 40;
       var xs = [L + 40, (L + W - R) / 2, W - R - 40], names = ['Initial', 'CBD', 'CBD-SA'];
       var all = []; rows.forEach(function (r) { all.push(r[1], r[2], r[3]); });
       var lo = Math.min.apply(null, all) - 0.0002, hi = Math.max.apply(null, all) + 0.0002;
@@ -162,6 +162,19 @@
       var mi = mean(1), mc = mean(2), ms = mean(3);
       var mg = svgEl('g', { class: 'ae-mean' }, svg);
       svgEl('polyline', { points: xs[1] + ',' + y(mc) + ' ' + xs[2] + ',' + y(ms) }, mg);
+      svgEl('circle', { cx: xs[1], cy: y(mc), r: 5.5 }, mg);
+      svgEl('circle', { cx: xs[2], cy: y(ms), r: 5.5 }, mg);
+      svgEl('text', { x: xs[1] - 12, y: y(mc) + 4, 'text-anchor': 'end', class: 'ae-mean-lab' }, mg).textContent = 'mean ' + mc.toFixed(5);
+      svgEl('text', { x: xs[2] + 10, y: y(ms) + 4, 'text-anchor': 'start', class: 'ae-mean-lab' }, mg).textContent = ms.toFixed(5);
+      // callout in the empty upper-right region, with a leader to the mean line's midpoint
+      var mx = (xs[1] + xs[2]) / 2, my = (y(mc) + y(ms)) / 2;
+      var bx = xs[2] + 20, by = T + 34;
+      var call = svgEl('g', { class: 'ae-callout' }, mg);
+      svgEl('line', { x1: mx, y1: by + 30, x2: mx, y2: my - 8, class: 'ae-leader' }, call);
+      var t1 = svgEl('text', { x: bx, y: by, 'text-anchor': 'end', class: 'ae-call-h' }, call);
+      t1.textContent = 'Thick line = mean of ' + rows.length + ' seeds';
+      var t2 = svgEl('text', { x: bx, y: by + 20, 'text-anchor': 'end', class: 'ae-call' }, call);
+      t2.textContent = 'CBD ' + mc.toFixed(5) + ' \u2192 CBD-SA ' + ms.toFixed(5) + '  (\u2212' + (100 * (mc - ms) / mc).toFixed(2) + '%)';
       function summary() {
         groups.forEach(function (o) { o.classList.remove('is-dim'); });
         var wins = rows.filter(function (r) { return r[3] < r[2]; }).length;

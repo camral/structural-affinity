@@ -203,20 +203,27 @@
     <div class="pg-controls">
       <div class="pg-sliders">
         <label class="pg-slider">
-          <span>Affinity strength <b>&alpha;</b> = <output id="o-alpha">0.50</output></span>
+          <span class="pg-slider-head"><span>Affinity strength <b>&alpha;</b></span><output id="o-alpha">0.50</output></span>
           <input type="range" id="s-alpha" min="0" max="0.95" step="0.01" value="0.5">
+          <span class="pg-slider-hint"><span>plain CBD</span><span>strong coupling</span></span>
         </label>
         <label class="pg-slider">
-          <span>Affinity density <b>d</b> = <output id="o-dens">0.40</output></span>
+          <span class="pg-slider-head"><span>Affinity density <b>d</b></span><output id="o-dens">0.40</output></span>
           <input type="range" id="s-dens" min="0" max="1" step="0.01" value="0.4">
+          <span class="pg-slider-hint"><span>no links</span><span>dense C</span></span>
         </label>
       </div>
+      <div class="pg-divider" aria-hidden="true"></div>
       <div class="pg-buttons">
-        <button class="button is-rounded is-small sa-btn" id="b-kick"><span class="icon"><i class="fas fa-dice"></i></span><span>Optimizer kick</span></button>
-        <button class="button is-rounded is-small sa-btn" id="b-pull"><span class="icon"><i class="fas fa-left-right"></i></span><span>Pull one handle</span></button>
-        <button class="button is-rounded is-small sa-btn" id="b-anim"><span class="icon"><i class="fas fa-play"></i></span><span>Random walk</span></button>
-        <button class="button is-rounded is-small sa-btn-ghost" id="b-reset"><span class="icon"><i class="fas fa-undo"></i></span><span>Reset</span></button>
-        <label class="pg-toggle"><input type="checkbox" id="c-outer" checked> outer cage</label>
+        <div class="pg-btn-row">
+          <button class="button is-rounded is-small sa-btn" id="b-kick"><span class="icon"><i class="fas fa-dice"></i></span><span>Optimizer kick</span></button>
+          <button class="button is-rounded is-small sa-btn" id="b-pull"><span class="icon"><i class="fas fa-left-right"></i></span><span>Pull one handle</span></button>
+          <button class="button is-rounded is-small sa-btn" id="b-anim"><span class="icon"><i class="fas fa-play"></i></span><span>Random walk</span></button>
+        </div>
+        <div class="pg-btn-row">
+          <button class="button is-rounded is-small sa-btn-ghost" id="b-reset"><span class="icon"><i class="fas fa-undo"></i></span><span>Reset</span></button>
+          <label class="pg-toggle"><input type="checkbox" id="c-outer" checked> Show outer cage</label>
+        </div>
       </div>
     </div>
 
@@ -422,6 +429,11 @@
           </ul>
         </div>
         <svg id="aero-svg" viewBox="0 0 640 340" role="img" aria-label="Paired drag coefficients, initial vs CBD vs CBD-SA"></svg>
+        <div class="aero-legend" aria-hidden="true">
+          <span><svg width="28" height="10"><line x1="1" y1="5" x2="27" y2="5" class="ae-l0"/></svg>initial &rarr; CBD (one seed)</span>
+          <span><svg width="28" height="10"><line x1="1" y1="5" x2="27" y2="5" class="ae-l1" style="opacity:1"/></svg>CBD &rarr; CBD-SA (one seed)</span>
+          <span><svg width="28" height="10"><line x1="2" y1="5" x2="26" y2="5" class="ae-mean-key"/></svg>mean over all seeds</span>
+        </div>
         <div class="aero-readout" id="aero-readout"></div>
       </div>
 
