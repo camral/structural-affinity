@@ -396,3 +396,5 @@ body { color: var(--ink); background: #fff; }
 .pg-btn-row { justify-content: flex-start; }
 @media (max-width: 640px) { .ae-callout { display: none; } }
 .pg-buttons { align-items: flex-start; }
+.pg-slider-hint { gap: 1rem; } .pg-slider-hint > span { white-space: nowrap; }
+@media (max-width: 1023px) { .pg-divider { display: none; } .pg-buttons { flex: 1 1 100%; } }
