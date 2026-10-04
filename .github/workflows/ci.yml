@@ -1,0 +1,27 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "site/**"
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install numpy scipy matplotlib pytest
+      - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: pytest -q
+      - name: Run examples
+        run: |
+          cd examples
+          for f in 0*.py; do echo "== $f"; python "$f"; done

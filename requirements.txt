@@ -1,0 +1,6 @@
+numpy>=1.21
+scipy>=1.7
+# optional
+torch>=2.0        # structural_affinity_torch.py
+matplotlib>=3.5   # examples
+pytest>=7         # tests
