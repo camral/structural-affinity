@@ -1,4 +1,4 @@
-"""Property tests: each one checks a claim from the paper (Section 3, Appendix A)."""
+"""Property tests. Each test examines one claim of the paper (Section 3, Appendix A)."""
 
 import numpy as np
 import pytest
@@ -29,8 +29,8 @@ def random_inside_ball(n, r=0.6, dim=3):
 @pytest.fixture
 def cages3d():
     inner = random_inside_ball(30, r=0.55)
-    outer = sa.convex_outer_cage(inner, padding=0.05)
-    return inner, outer
+    outer_verts, outer_faces = sa.convex_outer_cage(inner, padding=0.05)
+    return inner, (outer_verts, outer_faces)
 
 
 # ---------------------------------------------------------------- MVC
@@ -92,7 +92,7 @@ def test_mvc_on_vertex_and_on_face():
 
 def test_affinity_matrix_properties(cages3d):
     inner, outer = cages3d
-    W = sa.mvc(inner, outer.verts, outer.faces)
+    W = sa.mvc(inner, *outer)
     C = sa.affinity_matrix(W)
     assert np.allclose(C, C.T)
     assert np.allclose(np.diag(C), 1.0)
@@ -107,7 +107,7 @@ def test_affinity_matrix_properties(cages3d):
 def test_uncapped_average_is_always_one(cages3d):
     # Section 3.1: without the cap, sum_k w_ik * (w_jk / w_ik) = 1 for every pair
     inner, outer = cages3d
-    W = sa.mvc(inner, outer.verts, outer.faces)
+    W = sa.mvc(inner, *outer)
     uncapped = (W[:, None, :] * (W[None, :, :] / W[:, None, :])).sum(axis=2)
     assert np.allclose(uncapped, 1.0)
 
@@ -122,7 +122,7 @@ def test_affinity_matrix_rejects_negative_weights():
 
 def test_sparsify_density_counts_and_symmetry(cages3d):
     inner, outer = cages3d
-    C = sa.affinity_matrix(sa.mvc(inner, outer.verts, outer.faces))
+    C = sa.affinity_matrix(sa.mvc(inner, *outer))
     N = len(C)
     for d in [0.0, 0.1, 0.4, 1.0]:
         S = sa.sparsify(C, density=d)
@@ -135,7 +135,7 @@ def test_sparsify_density_counts_and_symmetry(cages3d):
 
 def test_sparsify_keeps_strongest(cages3d):
     inner, outer = cages3d
-    C = sa.affinity_matrix(sa.mvc(inner, outer.verts, outer.faces))
+    C = sa.affinity_matrix(sa.mvc(inner, *outer))
     S = sa.sparsify(C, density=0.3).toarray()
     off = ~np.eye(len(C), dtype=bool)
     kept, dropped = C[off & (S != 0)], C[off & (S == 0)]
@@ -144,7 +144,7 @@ def test_sparsify_keeps_strongest(cages3d):
 
 def test_sparsify_eps(cages3d):
     inner, outer = cages3d
-    C = sa.affinity_matrix(sa.mvc(inner, outer.verts, outer.faces))
+    C = sa.affinity_matrix(sa.mvc(inner, *outer))
     S = sa.sparsify(C, eps=0.5).toarray()
     off = ~np.eye(len(C), dtype=bool)
     assert (S[off][S[off] != 0] >= 0.5).all()
@@ -156,7 +156,7 @@ def test_sparsify_eps(cages3d):
 @pytest.fixture
 def system(cages3d):
     inner, outer = cages3d
-    C = sa.sparsify(sa.affinity_matrix(sa.mvc(inner, outer.verts, outer.faces)), density=0.4)
+    C = sa.sparsify(sa.affinity_matrix(sa.mvc(inner, *outer)), density=0.4)
     return inner, C
 
 
@@ -199,7 +199,7 @@ def test_matches_elementwise_formula_and_batch(system):
 def test_dense_operator_is_invertible(cages3d):
     # Section 3.2: eigenvalues of A are >= 1 - alpha, so every cage motion stays reachable
     inner, outer = cages3d
-    C = sa.affinity_matrix(sa.mvc(inner, outer.verts, outer.faces))
+    C = sa.affinity_matrix(sa.mvc(inner, *outer))
     for alpha in [0.1, 0.5, 0.9]:
         ev = np.linalg.eigvalsh(sa.propagation_operator(C, alpha))
         assert ev.min() >= 1 - alpha - 1e-10
@@ -217,22 +217,25 @@ def test_operator_is_sparse_for_sparse_C(system):
 @pytest.mark.parametrize("builder", [sa.icosahedral_outer_cage, sa.convex_outer_cage, sa.box_outer_cage])
 def test_outer_cages_enclose_strictly(dim, builder):
     inner = random_inside_ball(25, r=0.5, dim=dim)
-    outer = builder(inner, padding=0.05)
-    assert sa.check_encloses(outer, inner)
-    W = sa.mvc(inner, outer.verts, outer.faces)
+    outer_verts, outer_faces = builder(inner, padding=0.05)
+    assert (outer_faces is None) == (dim == 2)
+    assert sa.check_encloses(outer_verts, inner)
+    W = sa.mvc(inner, outer_verts, outer_faces)
     assert (W > 0).all()
 
 
 def test_check_encloses_detects_outside():
     inner = random_inside_ball(25, r=0.5)
-    outer = sa.box_outer_cage(inner, padding=0.05)
-    assert not sa.check_encloses(outer, np.vstack([inner, [[10.0, 0, 0]]]))
+    outer_verts, _ = sa.box_outer_cage(inner, padding=0.05)
+    assert not sa.check_encloses(outer_verts, np.vstack([inner, [[10.0, 0, 0]]]))
 
 
 @pytest.mark.parametrize("dim", [2, 3])
 def test_wrapper_end_to_end(dim):
     inner = random_inside_ball(20, r=0.5, dim=dim)
-    s = sa.StructuralAffinity.from_cage(inner, alpha=0.3, density=0.4)
+    outer_verts, outer_faces = sa.icosahedral_outer_cage(inner)
+    s = sa.StructuralAffinity(inner, outer_verts, outer_faces, alpha=0.3, density=0.4)
+    assert np.allclose(s.W, sa.mvc(inner, outer_verts, outer_faces))
     D = rng.normal(size=inner.shape)
     assert np.allclose(s.propagate(D), sa.propagate(s.C, D, 0.3))
     assert np.allclose(s(D), s.operator @ D)
@@ -247,13 +250,33 @@ def test_wrapper_end_to_end(dim):
 @pytest.mark.parametrize("dim", [2, 3])
 def test_icosahedral_outer_cage_is_coarse(dim):
     inner = random_inside_ball(60, r=0.5, dim=dim) * ([1.0, 0.5, 2.0][:dim])   # anisotropic
-    outer = sa.icosahedral_outer_cage(inner)
-    assert len(outer.verts) == (7 if dim == 2 else 12)
-    assert sa.check_encloses(outer, inner)
+    outer_verts, _ = sa.icosahedral_outer_cage(inner)
+    assert len(outer_verts) == (7 if dim == 2 else 12)
+    assert sa.check_encloses(outer_verts, inner)
 
 
 def test_wrapper_rejects_non_enclosing_outer():
     inner = random_inside_ball(20, r=0.5)
-    tiny = sa.box_outer_cage(inner * 0.1, padding=0.0)
+    tiny_verts, tiny_faces = sa.box_outer_cage(inner * 0.1, padding=0.0)
     with pytest.raises(ValueError):
-        sa.StructuralAffinity.from_cage(inner, outer=tiny)
+        sa.StructuralAffinity(inner, tiny_verts, tiny_faces)
+
+
+def test_wrapper_rejects_bad_inputs():
+    inner = random_inside_ball(20, r=0.5)
+    outer_verts, outer_faces = sa.icosahedral_outer_cage(inner)
+    with pytest.raises(ValueError):                       # 3D without faces
+        sa.StructuralAffinity(inner, outer_verts)
+    with pytest.raises(ValueError):                       # dimension mismatch
+        sa.StructuralAffinity(inner, outer_verts[:, :2])
+    with pytest.raises(ValueError):                       # negative alpha
+        sa.StructuralAffinity(inner, outer_verts, outer_faces, alpha=-0.1)
+
+
+def test_from_affinity_matrix_matches():
+    inner = random_inside_ball(20, r=0.5)
+    s = sa.StructuralAffinity(inner, *sa.icosahedral_outer_cage(inner), alpha=0.3, density=0.4)
+    t = sa.StructuralAffinity.from_affinity_matrix(s.C, alpha=0.3)
+    D = rng.normal(size=inner.shape)
+    assert np.allclose(s.propagate(D), t.propagate(D))
+    assert t.W is None

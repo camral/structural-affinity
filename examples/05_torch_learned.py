@@ -1,13 +1,15 @@
-"""Wiring Structural Affinity into a PyTorch training loop.
+"""Structural Affinity in a PyTorch training loop.
 
-Learned CBD pipelines (e.g. Neural Cages) predict handle offsets and train through the
-cage deformer. Here the "network output" is a free tensor of offsets, optimized with Adam
-to fit a target point cloud by Chamfer distance. AffinityPropagation sits between the
-offsets and the cage, and gradients flow through it to the offsets.
+A learned CBD pipeline (for example Neural Cages) predicts handle offsets. It trains
+through the cage deformer. In this example, a free tensor of offsets replaces the network
+output. Adam optimizes the offsets to fit a target point cloud (Chamfer distance).
+AffinityPropagation is between the offsets and the cage. The gradients go through it to
+the offsets.
 
-This example shows the plumbing, not the paper's result: for the measured effect in a
-learned setting (Neural Cages on ShapeNet), see Section 4 of the paper.
+This example shows the integration only. It does not show the result of the paper. For
+the result in a learned pipeline (Neural Cages, ShapeNet), refer to Section 4 of the paper.
 
+Run:
     python examples/05_torch_learned.py
 """
 
@@ -22,12 +24,13 @@ mesh, mesh_faces, cage, cage_faces = fingertip_3d(mesh_subdiv=3)
 phi = torch.tensor(sa.mvc(mesh, cage, cage_faces), dtype=torch.float32)
 cage_t = torch.tensor(cage, dtype=torch.float32)
 
-# target: the fingertip with a broad scoop pressed into its +y face
+# Target: the fingertip with a broad dent in its +y face.
 m = torch.tensor(mesh, dtype=torch.float32)
 dent = torch.exp(-((m[:, 0] / 0.3) ** 2 + (m[:, 2] / 0.35) ** 2)) * (m[:, 1] > 0)
 target = m - 0.12 * dent[:, None] * torch.tensor([0.0, 1.0, 0.0])
 
-affinity = sa.StructuralAffinity.from_cage(cage, alpha=0.3, density=0.4)
+outer_verts, outer_faces = sa.icosahedral_outer_cage(cage)
+affinity = sa.StructuralAffinity(cage, outer_verts, outer_faces, alpha=0.3, density=0.4)
 propagate = AffinityPropagation(affinity.C, alpha=affinity.alpha)
 
 
@@ -37,7 +40,7 @@ def chamfer(a, b):
 
 
 def fit(use_sa, steps=400):
-    offsets = torch.zeros_like(cage_t, requires_grad=True)       # stands in for net(x)
+    offsets = torch.zeros_like(cage_t, requires_grad=True)       # replaces net(x)
     opt = torch.optim.Adam([offsets], lr=5e-3)
     for _ in range(steps):
         D = propagate(offsets) if use_sa else offsets
@@ -54,7 +57,7 @@ for name, use_sa in [("CBD", False), ("CBD-SA", True)]:
     loss, _ = fit(use_sa)
     print(f"{name:7s} final Chamfer {1e4 * loss:.3f}e-4")
 
-# gradients reach the predicted offsets through the sparse propagation
+# The gradients go through the sparse propagation to the offsets.
 offsets = torch.zeros_like(cage_t, requires_grad=True)
 chamfer(phi @ (cage_t + propagate(offsets)), target).backward()
 print("grad norm at offsets:", float(offsets.grad.norm()))

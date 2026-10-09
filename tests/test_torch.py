@@ -11,7 +11,8 @@ from structural_affinity_torch import AffinityPropagation  # noqa: E402
 def sa3d():
     rng = np.random.default_rng(1)
     inner = rng.normal(size=(24, 3)) * 0.3
-    return sa.StructuralAffinity.from_cage(inner, alpha=0.35, density=0.4)
+    outer_verts, outer_faces = sa.icosahedral_outer_cage(inner)
+    return sa.StructuralAffinity(inner, outer_verts, outer_faces, alpha=0.35, density=0.4)
 
 
 def test_matches_numpy(sa3d):

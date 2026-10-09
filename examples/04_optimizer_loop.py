@@ -1,15 +1,19 @@
-"""Gradient-free shape optimization with and without Structural Affinity.
+"""Gradient-free shape optimization, with and without Structural Affinity.
 
-A (1+lambda) evolution strategy searches cage-handle displacements D to morph the 2D
-fingertip into a target outline (Chamfer distance). Each mutation perturbs a few random
-handles, like a sparse black-box optimizer. The only difference between the two runs is
-whether D passes through Structural Affinity before deforming the cage.
+A (1+lambda) evolution strategy finds handle displacements D. The objective is the
+Chamfer distance between the deformed 2D fingertip and a target outline. Each mutation
+changes 3 random handles. The two runs are the same, except for one step: in CBD-SA,
+D goes through Structural Affinity before the cage deformation.
 
-Expect a trade-off in this small toy problem: CBD-SA finds much smoother shapes with no
-cage crossings, but fits the target less tightly in the same budget. alpha sets the balance
-(alpha = 0 is plain CBD).
+Result in this small problem: CBD-SA gives smoother shapes and no cage self-intersections.
+But CBD-SA fits the target less closely in the same number of evaluations. alpha controls
+this balance. alpha = 0 gives plain CBD.
 
-    python examples/04_optimizer_loop.py      -> examples/out/04_optimizer_loop.png
+Run:
+    python examples/04_optimizer_loop.py
+
+Output:
+    examples/out/04_optimizer_loop.png
 """
 
 import matplotlib
@@ -23,9 +27,10 @@ import structural_affinity as sa
 
 outline, cage = fingertip_2d()
 phi = sa.mvc(outline, cage)
-affinity = sa.StructuralAffinity.from_cage(cage, alpha=0.5, density=0.4)
+outer_verts, outer_faces = sa.icosahedral_outer_cage(cage)   # regular 7-gon
+affinity = sa.StructuralAffinity(cage, outer_verts, outer_faces, alpha=0.5, density=0.4)
 
-# target: a smooth, wider "scoop" version of the fingertip
+# Target: a smooth, wider "scoop" shape.
 th = np.arctan2(outline[:, 1], outline[:, 0])
 target = outline * (1 + 0.22 * np.cos(th + 0.6) ** 2 - 0.12 * np.sin(2 * th))[:, None]
 target_tree = cKDTree(target)

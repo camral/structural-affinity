@@ -1,7 +1,10 @@
-"""3D: a fingertip mesh in a 42-handle cage. Displace a few handles, export CBD and CBD-SA results.
+"""3D. A fingertip mesh in an inner cage with 42 handles. Move one handle. Export CBD and CBD-SA results.
 
+Run:
     python examples/02_mesh_3d.py
-    -> examples/out/02_{rest,cbd,cbd_sa}.obj and 02_mesh_3d.png
+
+Output:
+    examples/out/02_rest.obj, 02_cbd.obj, 02_cbd_sa.obj, 02_mesh_3d.png
 """
 
 import matplotlib
@@ -13,17 +16,19 @@ from _shapes import fingertip_3d, laplacian_distortion, neighbours, out_path, sa
 import structural_affinity as sa
 
 mesh, mesh_faces, cage, cage_faces = fingertip_3d()
-print(f"mesh: {len(mesh)} verts | inner cage: {len(cage)} handles")
+print(f"mesh: {len(mesh)} vertices | inner cage: {len(cage)} handles")
 
-# CBD binding (your pipeline already has this): mesh vertices -> inner cage
-phi = sa.mvc(mesh, cage, cage_faces)
+# CBD setup. The mean-value coordinates phi bind the mesh to the inner cage.
+phi = sa.mvc(mesh, cage, cage_faces)                           # (P, N)
 
-# Structural Affinity, offline. Default outer cage: a 12-vertex icosahedral support, as in
-# the paper's Neural Cages experiments.
-affinity = sa.StructuralAffinity.from_cage(cage, alpha=0.4, density=0.4)
-print(f"outer cage: {len(affinity.outer.verts)} verts, L = {affinity.n_affinities}")
+# Outer cage: 12-vertex icosahedron. The paper uses this type for Neural Cages.
+outer_verts, outer_faces = sa.icosahedral_outer_cage(cage)
 
-# An "optimizer step": pull the handle on the +y side of the cage outward and down.
+# Structural Affinity. Do this step one time, offline.
+affinity = sa.StructuralAffinity(cage, outer_verts, outer_faces, alpha=0.4, density=0.4)
+print(f"outer cage: {len(outer_verts)} vertices | L = {affinity.n_affinities} affinities")
+
+# Displacement. Move the handle on the +y side of the cage outward and down.
 i = int(np.argmax(cage[:, 1] - 0.3 * np.abs(cage[:, 2])))
 D = np.zeros_like(cage)
 D[i] = [0.0, 0.35, -0.15]

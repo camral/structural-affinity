@@ -1,19 +1,21 @@
-"""Differentiable Structural Affinity propagation for PyTorch pipelines.
+"""Structural Affinity propagation for PyTorch. The operation is differentiable.
 
-Build the affinity matrix once with `structural_affinity.py` (numpy/scipy), then
-use `AffinityPropagation` inside your model, e.g. between a network that predicts
-cage-handle offsets and the cage-based deformer:
+Calculate C one time with structural_affinity.py (numpy, scipy). Then use
+AffinityPropagation in the model, between the offset prediction and the cage deformer.
 
-    from structural_affinity import StructuralAffinity
+Usage
+-----
+    from structural_affinity import StructuralAffinity, icosahedral_outer_cage
     from structural_affinity_torch import AffinityPropagation
 
-    sa = StructuralAffinity.from_cage(cage_verts, alpha=0.3, density=0.4)
-    propagate = AffinityPropagation(sa.C, alpha=sa.alpha).to(device)
+    outer_verts, outer_faces = icosahedral_outer_cage(cage_verts)
+    affinity = StructuralAffinity(cage_verts, outer_verts, outer_faces, alpha=0.3, density=0.4)
+    propagate = AffinityPropagation(affinity.C, alpha=affinity.alpha).to(device)
 
-    offsets = net(x)                         # (B, N, 3)
-    cage_deformed = cage + propagate(offsets)  # was: cage + offsets
+    offsets = net(x)                             # (B, N, 3)
+    cage_deformed = cage + propagate(offsets)    # without Structural Affinity: cage + offsets
 
-Gradients flow through the propagation to the predicted offsets.
+The gradients go through the propagation to the predicted offsets.
 """
 
 from __future__ import annotations
@@ -34,7 +36,7 @@ def _to_torch_sparse(C, dtype=torch.float32):
 
 
 def propagate_torch(A, D):
-    """dV = A D for D of shape (N, d) or (B, N, d); A is a (sparse) (N, N) tensor."""
+    """Calculate dV = A D. A is an (N, N) tensor, sparse or dense. D is (N, d) or (B, N, d)."""
     if D.dim() == 2:
         return torch.sparse.mm(A, D) if A.is_sparse else A @ D
     if D.dim() == 3:
@@ -46,10 +48,15 @@ def propagate_torch(A, D):
 
 
 class AffinityPropagation(nn.Module):
-    """dV = A D with A = (1 - alpha) I + alpha C^T stored as a sparse buffer.
+    """Module that calculates dV = A D, with A = (1 - alpha) I + alpha C^T.
 
-    The operator is fixed (no learnable parameters), so it moves with `.to(device)`
-    and is saved in the state dict.
+    A is a sparse buffer. It has no learnable parameters. `.to(device)` moves A, and the
+    state dict contains A.
+
+    Args:
+        C: (N, N) affinity matrix, dense or scipy.sparse. Use StructuralAffinity.C.
+        alpha: affinity strength, >= 0.
+        dtype: dtype of A.
     """
 
     def __init__(self, C, alpha=0.3, dtype=torch.float32):

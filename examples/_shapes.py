@@ -1,11 +1,11 @@
-"""Procedural shapes and small helpers shared by the examples (no external assets)."""
+"""Shapes and helper functions for the examples. The code makes all shapes. There are no asset files."""
 
 import os
 import sys
 
 import numpy as np
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))  # make structural_affinity importable
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))  # import structural_affinity from the repository root
 
 OUT = os.path.join(os.path.dirname(__file__), "out")
 
@@ -18,14 +18,14 @@ def out_path(name):
 # ------------------------------------------------------------------ 2D
 
 def fingertip_radius_2d(theta):
-    """Rounded superellipse, slightly tapered: the 2D shape used on the project page."""
+    """Radius of the 2D fingertip shape: a rounded, tapered superellipse. The project page uses this shape."""
     c, s = np.cos(theta), np.sin(theta)
     r = (np.abs(c / 0.6) ** 4 + np.abs(s / 0.5) ** 4) ** -0.25
     return r * (1 + 0.12 * s)
 
 
 def fingertip_2d(n_outline=240, n_cage=20, margin=0.07):
-    """Returns (outline (P, 2), inner cage polygon (N, 2))."""
+    """Return (outline (P, 2), inner cage polygon (N, 2))."""
     th = 2 * np.pi * np.arange(n_outline) / n_outline
     outline = fingertip_radius_2d(th)[:, None] * np.c_[np.cos(th), np.sin(th)]
     tc = 2 * np.pi * (np.arange(n_cage) + 0.5) / n_cage
@@ -36,7 +36,7 @@ def fingertip_2d(n_outline=240, n_cage=20, margin=0.07):
 # ------------------------------------------------------------------ 3D
 
 def icosphere(subdivisions=1):
-    """Unit icosphere. subdivisions=1 gives the 42-vertex cage used by Neural Cages."""
+    """Return a unit icosphere. subdivisions=1 gives 42 vertices, as the Neural Cages inner cage."""
     t = (1 + 5 ** 0.5) / 2
     v = [[-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0], [0, -1, t], [0, 1, t],
          [0, -1, -t], [0, 1, -t], [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]]
@@ -63,14 +63,14 @@ def icosphere(subdivisions=1):
 
 
 def fingertip_radius_3d(u):
-    """Radial function of a tapered superellipsoid ('fingertip'), for unit directions u (n, 3)."""
+    """Radius of the 3D fingertip shape (a tapered superellipsoid) for unit directions u (n, 3)."""
     x, y, z = u[:, 0], u[:, 1], u[:, 2]
     r = (np.abs(x / 0.45) ** 4 + np.abs(y / 0.35) ** 4 + np.abs(z / 0.7) ** 4) ** -0.25
     return r * (1 - 0.18 * z)
 
 
 def fingertip_3d(mesh_subdiv=4, cage_subdiv=1, margin=1.18):
-    """Returns (mesh verts, mesh faces, cage verts, cage faces) with the mesh strictly inside the cage."""
+    """Return (mesh verts, mesh faces, cage verts, cage faces). The mesh is strictly inside the cage."""
     mv, mf = icosphere(mesh_subdiv)
     mesh = mv * fingertip_radius_3d(mv)[:, None]
     cv, cf = icosphere(cage_subdiv)
@@ -81,7 +81,7 @@ def fingertip_3d(mesh_subdiv=4, cage_subdiv=1, margin=1.18):
 
 
 def inside_mesh(points, verts, faces):
-    """Generalized winding number test (works for any closed, consistently oriented mesh)."""
+    """Return True for each point inside a closed mesh. The test uses the generalized winding number."""
     a = verts[faces[:, 0]][None] - points[:, None]
     b = verts[faces[:, 1]][None] - points[:, None]
     c = verts[faces[:, 2]][None] - points[:, None]
@@ -92,7 +92,7 @@ def inside_mesh(points, verts, faces):
     return np.abs(wn) > 0.5
 
 
-# ------------------------------------------------------------------ metrics & io
+# ------------------------------------------------------------------ metrics, files
 
 def neighbours(faces, n):
     nb = [set() for _ in range(n)]
@@ -104,9 +104,9 @@ def neighbours(faces, n):
 
 
 def laplacian_distortion(rest, deformed, nbrs=None):
-    """Mean squared change of the uniform Laplacian (lower = smoother deformation).
+    """Return the mean squared change of the uniform Laplacian. A lower value is a smoother deformation.
 
-    `nbrs`: per-vertex neighbour index arrays for a mesh, or None for a closed polyline.
+    nbrs: for a mesh, one array of neighbour indices for each vertex. For a closed polyline, None.
     """
     def lap(x):
         if nbrs is None:
