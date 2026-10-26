@@ -10,7 +10,27 @@ authors:
     given-names: Hantao
   - family-names: Antonova
     given-names: Rika
-year: 2026
 url: "https://camral.github.io/structural-affinity/"
+identifiers:
+  - type: other
+    value: "arXiv:2610.23173"
+    description: "arXiv preprint"
 repository-code: "https://github.com/camral/structural-affinity"
 license: MIT
+preferred-citation:
+  type: article
+  title: "Structural Affinity: An Algorithm for Coherent Cage-Based Shape Design"
+  authors:
+    - family-names: Newatia
+      given-names: Aviraj
+    - family-names: Yang
+      given-names: Shengan
+    - family-names: Zhong
+      given-names: Hantao
+    - family-names: Antonova
+      given-names: Rika
+  year: 2026
+  url: "https://arxiv.org/abs/2610.23173"
+  identifiers:
+    - type: other
+      value: "arXiv:2610.23173"
