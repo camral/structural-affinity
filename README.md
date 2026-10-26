@@ -3,8 +3,7 @@
 Reference implementation of **Structural Affinity: An Algorithm for Coherent Cage-Based Shape Design**
 (Aviraj Newatia, Shengan Yang, Hantao Zhong, Rika Antonova, University of Cambridge).
 
-**[Project page](https://camral.github.io/structural-affinity/)** ·
-**[Paper (PDF)](https://camral.github.io/structural-affinity/static/pdf/structural-affinity.pdf)**
+**[Project page](https://camral.github.io/structural-affinity/)** · Paper: coming soon
 
 ## Summary
 
