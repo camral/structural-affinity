@@ -193,37 +193,14 @@
     render();
   }
 
-  // ---------- spatula videos: synced playback + frame scrubber ----------
+  // ---------- spatula videos: keep the CBD clip on the CBD-SA clock ----------
   function spatula() {
-    var range = $('#sp-range');
-    if (!range) return;
-    var a = $('#sp-a'), b = $('#sp-b'), t = $('#sp-t'), play = $('#sp-play'), icon = play.querySelector('i');
-    function label() { t.textContent = 't = ' + a.currentTime.toFixed(2) + ' s'; }
-    function setIcon() {
-      var paused = a.paused;
-      icon.className = paused ? 'fas fa-play' : 'fas fa-pause';
-      play.setAttribute('aria-label', paused ? 'Play' : 'Pause');
-    }
-    function setMax() { if (a.duration) range.max = a.duration.toFixed(3); }
-    setMax(); a.addEventListener('loadedmetadata', setMax);       // metadata may already be loaded (cache)
-    (function tick() {                                   // keep slider, label and the CBD video on the CBD-SA clock
-      if (!a.paused) {
-        range.value = a.currentTime;
-        if (!b.seeking && Math.abs(b.currentTime - a.currentTime) > 0.15) b.currentTime = a.currentTime;
-        label();
-      }
+    var a = $('#sp-a'), b = $('#sp-b');
+    if (!a || !b) return;
+    (function tick() {
+      if (!a.paused && !b.seeking && Math.abs(b.currentTime - a.currentTime) > 0.15) b.currentTime = a.currentTime;
       requestAnimationFrame(tick);
     })();
-    range.addEventListener('input', function () {
-      a.pause(); b.pause(); setIcon();
-      a.currentTime = b.currentTime = +range.value;
-      label();
-    });
-    play.addEventListener('click', function () {
-      if (a.paused) { b.currentTime = a.currentTime; a.play(); b.play(); } else { a.pause(); b.pause(); }
-      setIcon();
-    });
-    a.addEventListener('play', setIcon); a.addEventListener('pause', setIcon);
   }
 
   // ---------- CBD / CBD-SA switch on combined figure ----------

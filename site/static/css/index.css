@@ -229,7 +229,7 @@ body { color: var(--ink); background: #fff; }
 .pg-sliders { display: flex; gap: 1.5rem; flex-wrap: wrap; flex: 1 1 340px; }
 .pg-slider { display: flex; flex-direction: column; font-size: .9rem; flex: 1 1 150px; }
 .pg-slider output { font-family: ui-monospace, Menlo, monospace; }
-.pg-slider input[type=range], .sa-scrub-bar input[type=range] { accent-color: var(--sa); width: 100%; }
+.pg-slider input[type=range] { accent-color: var(--sa); width: 100%; }
 .pg-buttons { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
 .sa-btn { background: var(--sa); color: #fff; border: 0; }
 .sa-btn:hover, .sa-btn:focus { background: #0c8467; color: #fff; }
@@ -282,8 +282,6 @@ body { color: var(--ink); background: #fff; }
 .sa-scrub { max-width: 820px; margin: 0 auto; }
 .sa-scrub img, .sa-scrub video { width: 100%; border-radius: 10px; display: block; background: #000; }
 .sa-scrub-label { font-family: 'Google Sans', sans-serif; font-weight: 700; margin-bottom: .3rem; text-align: center; }
-.sa-scrub-bar { display: flex; gap: .8rem; align-items: center; margin: .2rem 0 .6rem; }
-.sa-scrub-bar span { font-size: .85rem; white-space: nowrap; }
 
 /* neural cages chart */
 .sa-quote { border-left: 4px solid var(--sa); padding: .6rem 1rem; background: #fff; border-radius: 0 12px 12px 0; }
