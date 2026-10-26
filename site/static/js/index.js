@@ -204,7 +204,8 @@
       icon.className = paused ? 'fas fa-play' : 'fas fa-pause';
       play.setAttribute('aria-label', paused ? 'Play' : 'Pause');
     }
-    a.addEventListener('loadedmetadata', function () { range.max = a.duration.toFixed(3); });
+    function setMax() { if (a.duration) range.max = a.duration.toFixed(3); }
+    setMax(); a.addEventListener('loadedmetadata', setMax);       // metadata may already be loaded (cache)
     (function tick() {                                   // keep slider, label and the CBD video on the CBD-SA clock
       if (!a.paused) {
         range.value = a.currentTime;
