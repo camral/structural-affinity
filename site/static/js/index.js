@@ -193,26 +193,36 @@
     render();
   }
 
-  // ---------- spatula scrubber ----------
+  // ---------- spatula videos: synced playback + frame scrubber ----------
   function spatula() {
     var range = $('#sp-range');
     if (!range) return;
-    var frames = ['1_00', '1_25', '1_50', '1_75', '2_00', '2_25', '2_50', '2_75', '3_00', '3_25'];
-    frames.forEach(function (f) { ['a', 'b'].forEach(function (s) { new Image().src = 'static/images/spatula/' + s + '_frame_' + f + '.jpg'; }); });
-    var a = $('#sp-a'), b = $('#sp-b'), t = $('#sp-t'), play = $('#sp-play'), timer = 0;
-    function show(i) {
-      var f = frames[i];
-      a.src = 'static/images/spatula/a_frame_' + f + '.jpg';
-      b.src = 'static/images/spatula/b_frame_' + f + '.jpg';
-      t.textContent = 't = ' + f.replace('_', '.') + ' s';
+    var a = $('#sp-a'), b = $('#sp-b'), t = $('#sp-t'), play = $('#sp-play'), icon = play.querySelector('i');
+    function label() { t.textContent = 't = ' + a.currentTime.toFixed(2) + ' s'; }
+    function setIcon() {
+      var paused = a.paused;
+      icon.className = paused ? 'fas fa-play' : 'fas fa-pause';
+      play.setAttribute('aria-label', paused ? 'Play' : 'Pause');
     }
-    function stop() { clearInterval(timer); timer = 0; play.querySelector('i').className = 'fas fa-play'; }
-    range.addEventListener('input', function () { stop(); show(+range.value); });
-    play.addEventListener('click', function () {
-      if (timer) { stop(); return; }
-      play.querySelector('i').className = 'fas fa-pause';
-      timer = setInterval(function () { range.value = (+range.value + 1) % frames.length; show(+range.value); }, 450);
+    a.addEventListener('loadedmetadata', function () { range.max = a.duration.toFixed(3); });
+    (function tick() {                                   // keep slider, label and the CBD video on the CBD-SA clock
+      if (!a.paused) {
+        range.value = a.currentTime;
+        if (!b.seeking && Math.abs(b.currentTime - a.currentTime) > 0.15) b.currentTime = a.currentTime;
+        label();
+      }
+      requestAnimationFrame(tick);
+    })();
+    range.addEventListener('input', function () {
+      a.pause(); b.pause(); setIcon();
+      a.currentTime = b.currentTime = +range.value;
+      label();
     });
+    play.addEventListener('click', function () {
+      if (a.paused) { b.currentTime = a.currentTime; a.play(); b.play(); } else { a.pause(); b.pause(); }
+      setIcon();
+    });
+    a.addEventListener('play', setIcon); a.addEventListener('pause', setIcon);
   }
 
   // ---------- CBD / CBD-SA switch on combined figure ----------

@@ -346,13 +346,13 @@
       <h3 class="title is-4 sa-sub">Spatula lift, frame by frame</h3>
       <div class="sa-scrub" id="spatula">
         <div class="columns is-mobile is-variable is-2">
-          <div class="column"><div class="sa-scrub-label c-cbd">CBD</div><img id="sp-b" src="static/images/spatula/b_frame_1_00.jpg" alt="CBD fingertips attempting a spatula lift"></div>
-          <div class="column"><div class="sa-scrub-label c-sa">CBD-SA</div><img id="sp-a" src="static/images/spatula/a_frame_1_00.jpg" alt="CBD-SA fingertips lifting a spatula"></div>
+          <div class="column"><div class="sa-scrub-label c-cbd">CBD</div><video id="sp-b" src="static/videos/spatula_cbd.mp4" muted playsinline loop autoplay preload="auto" aria-label="CBD fingertips attempting a spatula lift"></video></div>
+          <div class="column"><div class="sa-scrub-label c-sa">CBD-SA</div><video id="sp-a" src="static/videos/spatula_cbdsa.mp4" muted playsinline loop autoplay preload="auto" aria-label="CBD-SA fingertips lifting a spatula"></video></div>
         </div>
         <div class="sa-scrub-bar">
-          <button class="button is-small is-rounded sa-btn" id="sp-play" aria-label="Play"><span class="icon"><i class="fas fa-play"></i></span></button>
-          <input type="range" id="sp-range" min="0" max="9" step="1" value="0" aria-label="Frame">
-          <span class="sa-mono" id="sp-t">t = 1.00 s</span>
+          <button class="button is-small is-rounded sa-btn" id="sp-play" aria-label="Pause"><span class="icon"><i class="fas fa-pause"></i></span></button>
+          <input type="range" id="sp-range" min="0" max="3.3" step="0.0333" value="0" aria-label="Time">
+          <span class="sa-mono" id="sp-t">t = 0.00 s</span>
         </div>
         <p class="is-size-7 muted has-text-centered">Jagged CBD fingertips cannot get under the low, unbalanced spatula. CBD-SA's wide, smooth tips slide underneath and reorient it.</p>
       </div>
