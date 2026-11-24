@@ -94,7 +94,7 @@ class StructuralAffinity:
         >>> deformed_cage = cage_verts + affinity.propagate(D)
     """
 
-    def __init__(self, inner_verts, outer_verts, outer_faces=None, *, alpha=0.3, density=0.4, eps=None):
+    def __init__(self, inner_verts, outer_verts, outer_faces=None, *, alpha=0.3, density=0.4, eps=None, normalize=None):
         self.inner_verts = np.asarray(inner_verts, dtype=float)
         self.outer_verts = np.asarray(outer_verts, dtype=float)
         self.outer_faces = None if outer_faces is None else np.asarray(outer_faces, dtype=np.int64)
@@ -111,10 +111,11 @@ class StructuralAffinity:
         self.W = mvc(self.inner_verts, self.outer_verts, self.outer_faces)
         C = affinity_matrix(self.W)
         self.C = sparsify(C, eps=eps) if eps is not None else sparsify(C, density=density)
+        self._normalize = _validate_normalize(normalize)
         self.alpha = alpha
 
     @classmethod
-    def from_affinity_matrix(cls, C, alpha=0.3):
+    def from_affinity_matrix(cls, C, alpha=0.3, *, normalize=None):
         """Make an instance from an affinity matrix that you calculated before.
 
         Use this to load a saved C. The instance has no cage attributes (W, inner_verts,
@@ -123,6 +124,7 @@ class StructuralAffinity:
         obj = cls.__new__(cls)
         obj.inner_verts = obj.outer_verts = obj.outer_faces = obj.W = None
         obj.C = C if sp.issparse(C) else sp.csr_matrix(C)
+        obj._normalize = _validate_normalize(normalize)
         obj.alpha = alpha
         return obj
 
@@ -135,7 +137,16 @@ class StructuralAffinity:
         if value < 0:
             raise ValueError("alpha must be >= 0.")
         self._alpha = float(value)
-        self._A = propagation_operator(self.C, self._alpha)
+        self._A = propagation_operator(self.C, self._alpha, normalize=self._normalize)
+
+    @property
+    def normalize(self):
+        return self._normalize
+
+    @normalize.setter
+    def normalize(self, value):
+        self._normalize = _validate_normalize(value)
+        self._A = propagation_operator(self.C, self._alpha, normalize=self._normalize)
 
     @property
     def operator(self):
@@ -281,9 +292,13 @@ def check_encloses(outer_verts, points, margin=0.0):
     V = np.asarray(outer_verts, dtype=float)
     pts = np.atleast_2d(np.asarray(points, dtype=float))
     hull = ConvexHull(V)
-    if len(np.unique(hull.vertices)) != len(V):
-        raise ValueError("The outer cage is not strictly convex. Some vertices are not on its hull.")
-    # hull.equations: unit normal . x + offset <= 0 for points inside
+    # hull.equations: unit normal . x + offset <= 0 for points inside; == 0 on boundary.
+    # Allow coplanar vertices on hull faces/edges (e.g. subdivided boxes), but reject
+    # any strictly interior vertex (nonconvex cage).
+    scale = max(float(np.linalg.norm(V.max(axis=0) - V.min(axis=0))), 1.0)
+    signed_outer = V @ hull.equations[:, :-1].T + hull.equations[:, -1]
+    if (signed_outer.max(axis=1) < -1e-7 * scale).any():
+        raise ValueError("The outer cage is not convex. Some vertices lie strictly inside its hull.")
     signed = pts @ hull.equations[:, :-1].T + hull.equations[:, -1]
     return bool((signed < -margin).all())
 
@@ -471,15 +486,41 @@ def sparsify(C, density=None, eps=None):
     return sp.csr_matrix((data, (rows, cols)), shape=(N, N))
 
 
-def propagation_operator(C, alpha):
-    """Return A = (1 - alpha) I + alpha C^T. A is sparse if C is sparse."""
+def _validate_normalize(normalize):
+    if normalize not in (None, "clamp", "row"):
+        raise ValueError("normalize must be None, 'clamp', or 'row'.")
+    return normalize
+
+
+def propagation_operator(C, alpha, *, normalize=None):
+    """Return A = (1 - alpha) I + alpha C_norm^T. A is sparse if C is sparse.
+
+    Args:
+        C: (N, N) affinity matrix, dense or scipy.sparse.
+        alpha: affinity strength, >= 0.
+        normalize: optional row normalization of C^T before blending:
+            None: unnormalized (Eq. 3 of the paper).
+            'clamp': divide each row of C^T by max(1, row_sum).
+            'row': divide each row of C^T by its row_sum.
+    """
+    _validate_normalize(normalize)
     N = C.shape[0]
     if sp.issparse(C):
-        return ((1.0 - alpha) * sp.identity(N, format="csr") + alpha * C.T).tocsr()
-    return (1.0 - alpha) * np.eye(N) + alpha * np.asarray(C).T
+        CT = C.T.tocsr()
+        if normalize is not None:
+            row_sum = np.asarray(CT.sum(axis=1)).ravel()
+            denom = np.maximum(row_sum, 1.0) if normalize == "clamp" else np.where(row_sum > 0, row_sum, 1.0)
+            CT = sp.diags(1.0 / denom) @ CT
+        return ((1.0 - alpha) * sp.identity(N, format="csr") + alpha * CT).tocsr()
+    CT = np.asarray(C, dtype=float).T
+    if normalize is not None:
+        row_sum = CT.sum(axis=1, keepdims=True)
+        denom = np.maximum(row_sum, 1.0) if normalize == "clamp" else np.where(row_sum > 0, row_sum, 1.0)
+        CT = CT / denom
+    return (1.0 - alpha) * np.eye(N) + alpha * CT
 
 
-def propagate(C, D, alpha):
+def propagate(C, D, alpha, *, normalize=None):
     """Calculate dV = A D, with A = (1 - alpha) I + alpha C^T (Eq. 3).
 
     Each displaced handle i keeps its displacement D_i. Each other handle j also moves
@@ -489,12 +530,13 @@ def propagate(C, D, alpha):
         C: (N, N) affinity matrix, dense or scipy.sparse, with a diagonal of 1.
         D: (N, d) handle displacements, or (B, N, d) for a batch.
         alpha: affinity strength, >= 0.
+        normalize: optional row normalization (None, 'clamp', or 'row').
 
     This function makes A on each call. For repeated calls, use StructuralAffinity,
     which keeps A.
     """
     D = np.asarray(D, dtype=float)
-    A = propagation_operator(C, alpha)
+    A = propagation_operator(C, alpha, normalize=normalize)
     if D.ndim == 2:
         return np.asarray(A @ D)
     if D.ndim == 3:

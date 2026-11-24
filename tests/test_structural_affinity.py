@@ -280,3 +280,42 @@ def test_from_affinity_matrix_matches():
     D = rng.normal(size=inner.shape)
     assert np.allclose(s.propagate(D), t.propagate(D))
     assert t.W is None
+
+
+# ---------------------------------------------------------------- normalization & subdivided convex cages
+
+def test_propagation_operator_normalize(cages3d):
+    inner, outer = cages3d
+    aff_raw = sa.StructuralAffinity(inner, *outer, alpha=0.5, density=0.5, normalize=None)
+    aff_clamp = sa.StructuralAffinity(inner, *outer, alpha=0.5, density=0.5, normalize="clamp")
+    aff_row = sa.StructuralAffinity(inner, *outer, alpha=0.5, density=0.5, normalize="row")
+
+    # Dense/sparse parity for both normalize modes
+    A_clamp_dense = sa.propagation_operator(aff_raw.C.toarray(), 0.5, normalize="clamp")
+    A_row_dense = sa.propagation_operator(aff_raw.C.toarray(), 0.5, normalize="row")
+    assert np.allclose(aff_clamp.operator.toarray(), A_clamp_dense)
+    assert np.allclose(aff_row.operator.toarray(), A_row_dense)
+
+    # Row sums of normalized operators are bounded by 1.0 (since diag(C) = 1 -> row_sum >= 1)
+    assert np.allclose(aff_clamp.operator.toarray().sum(axis=1), 1.0)
+    assert np.allclose(aff_row.operator.toarray().sum(axis=1), 1.0)
+    assert aff_raw.operator.toarray().sum(axis=1).max() > 1.0
+
+    # Property setter updates operator
+    aff_raw.normalize = "clamp"
+    assert np.allclose(aff_raw.operator.toarray(), aff_clamp.operator.toarray())
+
+    with pytest.raises(ValueError):
+        sa.propagation_operator(aff_raw.C, 0.5, normalize="bad")
+
+
+def test_check_encloses_allows_subdivided_convex_and_rejects_interior():
+    # Subdivided 2D square with midpoint vertices on edges (coplanar on hull boundary)
+    sq = np.array([[-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]], float)
+    pts = np.array([[0.0, 0.0], [0.5, -0.5]])
+    assert sa.check_encloses(sq, pts)
+
+    # Non-convex cage with a strictly interior vertex must still raise
+    nonconvex = np.vstack([sq, [[0.0, 0.0]]])
+    with pytest.raises(ValueError):
+        sa.check_encloses(nonconvex, pts)
