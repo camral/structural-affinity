@@ -94,7 +94,7 @@ class StructuralAffinity:
         >>> deformed_cage = cage_verts + affinity.propagate(D)
     """
 
-    def __init__(self, inner_verts, outer_verts, outer_faces=None, *, alpha=0.3, density=0.4, eps=None, normalize=None):
+    def __init__(self, inner_verts, outer_verts, outer_faces=None, *, alpha=0.3, density=0.4, eps=None, normalize=False):
         self.inner_verts = np.asarray(inner_verts, dtype=float)
         self.outer_verts = np.asarray(outer_verts, dtype=float)
         self.outer_faces = None if outer_faces is None else np.asarray(outer_faces, dtype=np.int64)
@@ -111,11 +111,11 @@ class StructuralAffinity:
         self.W = mvc(self.inner_verts, self.outer_verts, self.outer_faces)
         C = affinity_matrix(self.W)
         self.C = sparsify(C, eps=eps) if eps is not None else sparsify(C, density=density)
-        self._normalize = _validate_normalize(normalize)
+        self._normalize = bool(normalize)
         self.alpha = alpha
 
     @classmethod
-    def from_affinity_matrix(cls, C, alpha=0.3, *, normalize=None):
+    def from_affinity_matrix(cls, C, alpha=0.3, *, normalize=False):
         """Make an instance from an affinity matrix that you calculated before.
 
         Use this to load a saved C. The instance has no cage attributes (W, inner_verts,
@@ -124,7 +124,7 @@ class StructuralAffinity:
         obj = cls.__new__(cls)
         obj.inner_verts = obj.outer_verts = obj.outer_faces = obj.W = None
         obj.C = C if sp.issparse(C) else sp.csr_matrix(C)
-        obj._normalize = _validate_normalize(normalize)
+        obj._normalize = bool(normalize)
         obj.alpha = alpha
         return obj
 
@@ -145,7 +145,7 @@ class StructuralAffinity:
 
     @normalize.setter
     def normalize(self, value):
-        self._normalize = _validate_normalize(value)
+        self._normalize = bool(value)
         self._A = propagation_operator(self.C, self._alpha, normalize=self._normalize)
 
     @property
@@ -486,41 +486,31 @@ def sparsify(C, density=None, eps=None):
     return sp.csr_matrix((data, (rows, cols)), shape=(N, N))
 
 
-def _validate_normalize(normalize):
-    if normalize not in (None, "clamp", "row"):
-        raise ValueError("normalize must be None, 'clamp', or 'row'.")
-    return normalize
-
-
-def propagation_operator(C, alpha, *, normalize=None):
+def propagation_operator(C, alpha, *, normalize=False):
     """Return A = (1 - alpha) I + alpha C_norm^T. A is sparse if C is sparse.
 
     Args:
         C: (N, N) affinity matrix, dense or scipy.sparse.
         alpha: affinity strength, >= 0.
-        normalize: optional row normalization of C^T before blending:
-            None: unnormalized (Eq. 3 of the paper).
-            'clamp': divide each row of C^T by max(1, row_sum).
-            'row': divide each row of C^T by its row_sum.
+        normalize: if True, row-normalize C^T before blending. False preserves Eq. 3.
     """
-    _validate_normalize(normalize)
     N = C.shape[0]
     if sp.issparse(C):
         CT = C.T.tocsr()
-        if normalize is not None:
+        if normalize:
             row_sum = np.asarray(CT.sum(axis=1)).ravel()
-            denom = np.maximum(row_sum, 1.0) if normalize == "clamp" else np.where(row_sum > 0, row_sum, 1.0)
+            denom = np.where(row_sum > 0, row_sum, 1.0)
             CT = sp.diags(1.0 / denom) @ CT
         return ((1.0 - alpha) * sp.identity(N, format="csr") + alpha * CT).tocsr()
     CT = np.asarray(C, dtype=float).T
-    if normalize is not None:
+    if normalize:
         row_sum = CT.sum(axis=1, keepdims=True)
-        denom = np.maximum(row_sum, 1.0) if normalize == "clamp" else np.where(row_sum > 0, row_sum, 1.0)
+        denom = np.where(row_sum > 0, row_sum, 1.0)
         CT = CT / denom
     return (1.0 - alpha) * np.eye(N) + alpha * CT
 
 
-def propagate(C, D, alpha, *, normalize=None):
+def propagate(C, D, alpha, *, normalize=False):
     """Calculate dV = A D, with A = (1 - alpha) I + alpha C^T (Eq. 3).
 
     Each displaced handle i keeps its displacement D_i. Each other handle j also moves
@@ -530,7 +520,7 @@ def propagate(C, D, alpha, *, normalize=None):
         C: (N, N) affinity matrix, dense or scipy.sparse, with a diagonal of 1.
         D: (N, d) handle displacements, or (B, N, d) for a batch.
         alpha: affinity strength, >= 0.
-        normalize: optional row normalization (None, 'clamp', or 'row').
+        normalize: if True, row-normalize C^T before blending.
 
     This function makes A on each call. For repeated calls, use StructuralAffinity,
     which keeps A.

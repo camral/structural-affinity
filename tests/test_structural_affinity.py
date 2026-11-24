@@ -286,27 +286,20 @@ def test_from_affinity_matrix_matches():
 
 def test_propagation_operator_normalize(cages3d):
     inner, outer = cages3d
-    aff_raw = sa.StructuralAffinity(inner, *outer, alpha=0.5, density=0.5, normalize=None)
-    aff_clamp = sa.StructuralAffinity(inner, *outer, alpha=0.5, density=0.5, normalize="clamp")
-    aff_row = sa.StructuralAffinity(inner, *outer, alpha=0.5, density=0.5, normalize="row")
+    aff_raw = sa.StructuralAffinity(inner, *outer, alpha=0.5, density=0.5, normalize=False)
+    aff_norm = sa.StructuralAffinity(inner, *outer, alpha=0.5, density=0.5, normalize=True)
 
-    # Dense/sparse parity for both normalize modes
-    A_clamp_dense = sa.propagation_operator(aff_raw.C.toarray(), 0.5, normalize="clamp")
-    A_row_dense = sa.propagation_operator(aff_raw.C.toarray(), 0.5, normalize="row")
-    assert np.allclose(aff_clamp.operator.toarray(), A_clamp_dense)
-    assert np.allclose(aff_row.operator.toarray(), A_row_dense)
+    # Dense/sparse parity
+    A_norm_dense = sa.propagation_operator(aff_raw.C.toarray(), 0.5, normalize=True)
+    assert np.allclose(aff_norm.operator.toarray(), A_norm_dense)
 
-    # Row sums of normalized operators are bounded by 1.0 (since diag(C) = 1 -> row_sum >= 1)
-    assert np.allclose(aff_clamp.operator.toarray().sum(axis=1), 1.0)
-    assert np.allclose(aff_row.operator.toarray().sum(axis=1), 1.0)
+    # Row sums of normalized operator are 1.0
+    assert np.allclose(aff_norm.operator.toarray().sum(axis=1), 1.0)
     assert aff_raw.operator.toarray().sum(axis=1).max() > 1.0
 
     # Property setter updates operator
-    aff_raw.normalize = "clamp"
-    assert np.allclose(aff_raw.operator.toarray(), aff_clamp.operator.toarray())
-
-    with pytest.raises(ValueError):
-        sa.propagation_operator(aff_raw.C, 0.5, normalize="bad")
+    aff_raw.normalize = True
+    assert np.allclose(aff_raw.operator.toarray(), aff_norm.operator.toarray())
 
 
 def test_check_encloses_allows_subdivided_convex_and_rejects_interior():

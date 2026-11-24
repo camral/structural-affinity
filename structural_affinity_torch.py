@@ -59,14 +59,14 @@ class AffinityPropagation(nn.Module):
         dtype: dtype of A.
     """
 
-    def __init__(self, C, alpha=0.3, *, normalize=None, dtype=torch.float32):
+    def __init__(self, C, alpha=0.3, *, normalize=False, dtype=torch.float32):
         super().__init__()
         from structural_affinity import propagation_operator
 
         C = sp.csr_matrix(C)
         A = propagation_operator(C, alpha, normalize=normalize)
         self.alpha = float(alpha)
-        self.normalize = normalize
+        self.normalize = bool(normalize)
         self.register_buffer("A", _to_torch_sparse(A, dtype))
 
     def forward(self, D):
